@@ -416,4 +416,116 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }, { threshold: 0.12 });
   document.querySelectorAll('.reveal').forEach(el => revealIO.observe(el));
+
+  // ── Booking Form ──
+  // ★ OWNER CONFIG — change these two values ★
+  const OWNER_WHATSAPP = '918930341368'; // WhatsApp number with country code, no +
+  const OWNER_EMAIL    = 'samplemail@gmail.com'; // Gmail / any email address
+
+  const form         = document.getElementById('booking-form');
+  const successBox   = document.getElementById('booking-success');
+  const errorMsg     = document.getElementById('form-error');
+  const btnWA        = document.getElementById('btn-whatsapp');
+  const btnMail      = document.getElementById('btn-email');
+  const btnNewBooking = document.getElementById('btn-new-booking');
+
+  function getFields() {
+    return {
+      name:    document.getElementById('f-name').value.trim(),
+      phone:   document.getElementById('f-phone').value.trim(),
+      address: document.getElementById('f-address').value.trim(),
+      car:     document.getElementById('f-car').value.trim(),
+      model:   document.getElementById('f-model').value.trim(),
+      date:    document.getElementById('f-date').value,
+      time:    document.getElementById('f-time').value,
+    };
+  }
+
+  function validate(f) {
+    if (!f.name)    return 'Please enter your name.';
+    if (!f.phone)   return 'Please enter your phone number.';
+    if (!f.address) return 'Please enter your address.';
+    if (!f.car)     return 'Please enter your car name.';
+    if (!f.date)    return 'Please choose a preferred date.';
+    if (!f.time)    return 'Please select a time slot.';
+    return null;
+  }
+
+  function buildMessage(f) {
+    return `🚗 *New AutoShine Booking*\n\n` +
+      `👤 *Name:* ${f.name}\n` +
+      `📞 *Phone:* ${f.phone}\n` +
+      `📍 *Address:* ${f.address}\n` +
+      `🚘 *Car:* ${f.car}${f.model ? ' — ' + f.model : ''}\n` +
+      `📅 *Date:* ${f.date}\n` +
+      `⏰ *Time:* ${f.time}\n\n` +
+      `Please confirm the booking. Thank you!`;
+  }
+
+  function showSuccess() {
+    form.style.display = 'none';
+    successBox.style.display = 'flex';
+  }
+
+  if (btnWA) {
+    btnWA.addEventListener('click', () => {
+      const f = getFields();
+      const err = validate(f);
+      if (err) { errorMsg.textContent = err; return; }
+      errorMsg.textContent = '';
+      const msg = buildMessage(f);
+      const encoded = encodeURIComponent(msg);
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile) {
+        // Opens WhatsApp app directly on mobile — no browser confirmation page
+        const appLink = `whatsapp://send?phone=${OWNER_WHATSAPP}&text=${encoded}`;
+        const webFallback = `https://wa.me/${OWNER_WHATSAPP}?text=${encoded}`;
+        const start = Date.now();
+        window.location.href = appLink;
+        setTimeout(() => {
+          // Only redirect to web if app didn't open (still on page after 1.5s)
+          if (Date.now() - start < 1800) window.location.href = webFallback;
+        }, 1500);
+      } else {
+        // Desktop: open WhatsApp Web directly (bypasses the wa.me landing page)
+        window.open(`https://web.whatsapp.com/send?phone=${OWNER_WHATSAPP}&text=${encoded}`, '_blank', 'noopener');
+      }
+      showSuccess();
+    });
+  }
+
+  if (btnMail) {
+    btnMail.addEventListener('click', () => {
+      const f = getFields();
+      const err = validate(f);
+      if (err) { errorMsg.textContent = err; return; }
+      errorMsg.textContent = '';
+      const subject = `AutoShine Booking — ${f.name} — ${f.date}`;
+      const body =
+        `New Booking Request\n\n` +
+        `Name: ${f.name}\n` +
+        `Phone: ${f.phone}\n` +
+        `Address: ${f.address}\n` +
+        `Car: ${f.car}${f.model ? ' (' + f.model + ')' : ''}\n` +
+        `Date: ${f.date}\n` +
+        `Time: ${f.time}\n\n` +
+        `Please confirm the booking.`;
+      const url = `mailto:${OWNER_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = url;
+      showSuccess();
+    });
+  }
+
+  if (btnNewBooking) {
+    btnNewBooking.addEventListener('click', () => {
+      // reset form fields
+      ['f-name','f-phone','f-address','f-car','f-model','f-date'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      const sel = document.getElementById('f-time'); if (sel) sel.selectedIndex = 0;
+      successBox.style.display = 'none';
+      form.style.display = 'flex';
+    });
+  }
+
 });
