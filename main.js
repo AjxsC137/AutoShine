@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // SERVICES  ↓ YOUR angle
   buildScene('canvas-services', {
-    restAngleY: Math.PI * 0.65,
+    restAngleY: Math.PI * 0.60,
     camX: 0, camY: 1.1, camZ: 5.2,
     lights: 'dramatic', fogNear: 7, fogFar: 17,
   });
