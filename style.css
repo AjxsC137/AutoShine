@@ -558,6 +558,59 @@ body {
 
   .hamburger { display: flex; }
   .drag-hint { display: none; }
+  /* hide car panels on mobile for cleaner UI */
+  #contact .car-half, #services .car-half, #pricing .car-half { display: none; }
+
+  /* ── Hero mobile: car on top block, content below — no overlap ── */
+  #hero {
+    flex-direction: column;
+    min-height: unset;
+  }
+  /* turn the hero car from full-bleed absolute into a normal block on top */
+  #hero .car-half {
+    position: relative !important;
+    inset: unset !important;
+    flex: 0 0 72vw !important;
+    width: 100% !important;
+    height: 72vw !important;
+    min-height: unset !important;
+    z-index: 1;
+  }
+  #hero .content-half {
+    position: relative;
+    min-height: unset;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 0;
+    z-index: 2;
+  }
+  .hero-layout {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+    padding: 20px 20px 16px;
+    min-height: unset;
+    margin-top: 0;
+  }
+  /* hide right panel — keeps layout clean */
+  .hero-right { display: none; }
+  /* left panel: plain, no blur needed since car is above not behind */
+  .hero-left {
+    padding: 0;
+    background: transparent;
+    backdrop-filter: none;
+    border: none;
+    gap: 0;
+  }
+  .hero-title { font-size: clamp(2.4rem, 10vw, 3.4rem); margin-bottom: 20px; }
+  .hero-actions { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  .hero-actions .btn { flex: 1; min-width: 120px; padding: 12px 16px; font-size: .65rem; justify-content: center; }
+  /* stat strip tighter on mobile */
+  .hero-stat-strip { padding: 16px 20px; gap: 16px; }
+  /* shrink non-hero car panels by ~20% top + 20% bottom = 40% total height reduction */
+  .car-half { flex: 0 0 18vh; }
+  /* hero stays full-bleed so leave it untouched */
+  #hero .car-half { flex: none; height: 100%; }
   .footer { padding: 28px 24px; }
   .footer-inner { flex-direction: column; align-items: flex-start; gap: 10px; }
 }
