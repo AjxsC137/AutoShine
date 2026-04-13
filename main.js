@@ -48,8 +48,10 @@ function buildScene(canvasId, options = {}) {
     const h = container.offsetHeight || container.clientHeight || window.innerHeight;
     if (!w || !h) return;
     renderer.setSize(w, h, false);
-    // On mobile push camera back 25% so car appears smaller
-    const mobScale = window.innerWidth <= 960 ? 1.25 : 1.0;
+    const isMob768 = window.innerWidth <= 768;
+    const isHero = canvas.id === 'canvas-hero';
+    // On mobile hero: zoom in 35% (multiply by 0.65 instead of 1.25)
+    const mobScale = isMob768 && isHero ? 0.65 : (window.innerWidth <= 960 ? 1.25 : 1.0);
     camera.position.setZ(camZ * mobScale);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
@@ -219,9 +221,17 @@ function buildScene(canvasId, options = {}) {
 
   // ── Animate ──
   let t = 0, rafId;
+  // autoRock vars declared here so animate closure can access them
+  let autoRock = false, autoRockT = 0;
+  const AR_MID = Math.PI * 0.50, AR_AMP = Math.PI * 0.10, AR_SPEED = 0.0032;
   function animate() {
     rafId = requestAnimationFrame(animate);
     t += 0.01;
+    // auto-rock: gently oscillate restAngleY when enabled and not dragging
+    if (autoRock && !isDragging) {
+      autoRockT += AR_SPEED;
+      restAngleY = AR_MID + Math.sin(autoRockT) * AR_AMP;
+    }
     if (isDragging) {
       currentY = restAngleY + dragDeltaY;
     } else {
@@ -252,6 +262,11 @@ function buildScene(canvasId, options = {}) {
   return {
     scene,
     setAngle(a) { restAngleY = a; },
+    setAutoRock(enabled) {
+      autoRock = enabled;
+      // sync phase to current angle so motion starts smoothly
+      if (enabled) autoRockT = Math.asin(Math.max(-1, Math.min(1, (restAngleY - AR_MID) / AR_AMP))) || 0;
+    },
   };
 }
 
@@ -285,7 +300,16 @@ document.addEventListener('DOMContentLoaded', () => {
     { label: 'Rear',        angle: -Math.PI / 2    },
     { label: 'Rear-Left',   angle: -Math.PI * 0.25 },
   ];
-  let heroAngleIdx = 0;
+  // On mobile default to Front view; desktop keeps Left Side (0)
+  const isMobileView = window.innerWidth <= 768;
+  const frontIdx = heroAngles.findIndex(a => a.label === 'Front'); // index 2
+  let heroAngleIdx = isMobileView ? frontIdx : 0;
+  if (isMobileView && heroScene) {
+    heroScene.setAngle(heroAngles[frontIdx].angle);
+    const lbl = document.querySelector('#btn-change-view .view-label');
+    if (lbl) lbl.textContent = 'Front';
+  }
+
   const btnView = document.getElementById('btn-change-view');
   if (btnView && heroScene) {
     btnView.addEventListener('click', () => {
@@ -303,17 +327,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // SERVICES  ↓ YOUR angle
   buildScene('canvas-services', {
-    restAngleY: Math.PI * 0.58,
+    restAngleY: Math.PI * 0.65,
     camX: 0, camY: 1.1, camZ: 5.2,
     lights: 'dramatic', fogNear: 7, fogFar: 17,
   });
 
   // ABOUT  ↓ YOUR angle
-  buildScene('canvas-about', {
+  // ABOUT — auto-rock on mobile between 0.40π and 0.60π
+  const aboutScene = buildScene('canvas-about', {
     restAngleY: Math.PI / 2,
     camX: 0, camY: 1.1, camZ: 5.2,
     lights: 'cool', fogNear: 7, fogFar: 17,
   });
+  if (aboutScene && window.innerWidth <= 768) {
+    aboutScene.setAutoRock(true);
+  }
 
   // PRICING  ↓ YOUR angle
   buildScene('canvas-pricing', {
@@ -419,8 +447,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Booking Form ──
   // ★ OWNER CONFIG — change these two values ★
-  const OWNER_WHATSAPP = '918930341368'; // WhatsApp number with country code, no +
-  const OWNER_EMAIL    = 'samplemail@gmail.com'; // Gmail / any email address
+  const OWNER_WHATSAPP = '919999999999'; // WhatsApp number with country code, no +
+  const OWNER_EMAIL    = 'autoshine@gmail.com'; // Gmail / any email address
 
   const form         = document.getElementById('booking-form');
   const successBox   = document.getElementById('booking-success');
