@@ -1,6 +1,6 @@
 # ◈ AutoShine: Premium Car Wash Detailing
 
-<a href="https://auto-shine-4wikik2qh-ajits-projects-98f27314.vercel.app" target="_blank">
+<a href="https://auto-shine-snowy.vercel.app/" target="_blank">
   <img src="https://img.shields.io/badge/LIVE%20DEMO-00c9a7?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" />
 </a>
 
