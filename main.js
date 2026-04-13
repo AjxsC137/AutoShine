@@ -48,11 +48,13 @@ function buildScene(canvasId, options = {}) {
     const h = container.offsetHeight || container.clientHeight || window.innerHeight;
     if (!w || !h) return;
     renderer.setSize(w, h, false);
-    const isMob768 = window.innerWidth <= 768;
+    const isMob768 = window.matchMedia('(max-width: 768px)').matches;
     const isHero = canvas.id === 'canvas-hero';
-    // On mobile hero: zoom in 35% (multiply by 0.65 instead of 1.25)
+    const isAbout = canvas.id === 'canvas-about';
+    // On mobile hero: zoom in 35%
     const mobScale = isMob768 && isHero ? 0.65 : (window.innerWidth <= 960 ? 1.25 : 1.0);
     camera.position.setZ(camZ * mobScale);
+    camera.position.setY(camY);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
   }
@@ -125,7 +127,7 @@ function buildScene(canvasId, options = {}) {
 
   // ── Particles ──
   // ↓↓ CHANGE THIS NUMBER to adjust floating cyan particle count ↓↓
-  const pCount = 400;
+  const pCount = options.particles || 400;
   // ↑↑ ——————————————————————————————————————————————————————————— ↑↑
   const pPos = new Float32Array(pCount * 3);
   for (let i = 0; i < pCount; i++) {
@@ -137,46 +139,14 @@ function buildScene(canvasId, options = {}) {
   pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
   scene.add(new THREE.Points(pGeo, new THREE.PointsMaterial({ color: 0x00c9a7, size: 0.022, transparent: true, opacity: 0.4, sizeAttenuation: true })));
 
-  // ── Placeholder car (shown until GLB loads) ──
-  const placeholder = new THREE.Group();
-  const bodyMat  = new THREE.MeshStandardMaterial({ color: 0x1a2a28, metalness: 0.7, roughness: 0.3, emissive: new THREE.Color(0x00c9a7), emissiveIntensity: 0.08 });
-  const roofMat  = new THREE.MeshStandardMaterial({ color: 0x0f1f1d, metalness: 0.8, roughness: 0.25, emissive: new THREE.Color(0x00c9a7), emissiveIntensity: 0.06 });
-  const windMat  = new THREE.MeshStandardMaterial({ color: 0x00c9a7, transparent: true, opacity: 0.18, metalness: 0.1, roughness: 0.05 });
-  const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.3, roughness: 0.8 });
-  const rimMat   = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.9, roughness: 0.15, emissive: new THREE.Color(0x00c9a7), emissiveIntensity: 0.12 });
-  const lightMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: new THREE.Color(0x00c9a7), emissiveIntensity: 0.9 });
-  const tailMat  = new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: new THREE.Color(0xff2200), emissiveIntensity: 0.6 });
-
-  const body = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.9, 1.8), bodyMat);
-  body.position.y = 0.45; body.castShadow = true; placeholder.add(body);
-
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.75, 1.6), roofMat);
-  roof.position.set(-0.1, 1.27, 0); roof.castShadow = true; placeholder.add(roof);
-
-  const windGeo = new THREE.BoxGeometry(0.08, 0.65, 1.5);
-  const wf = new THREE.Mesh(windGeo, windMat); wf.position.set( 0.95, 1.25, 0); placeholder.add(wf);
-  const wr = new THREE.Mesh(windGeo, windMat); wr.position.set(-1.15, 1.25, 0); placeholder.add(wr);
-
-  [[-1.2,0.38,1.1],[-1.2,0.38,-1.1],[1.2,0.38,1.1],[1.2,0.38,-1.1]].forEach(([x,y,z]) => {
-    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.38,0.28,28), wheelMat);
-    w.rotation.z = Math.PI/2; w.position.set(x,y,z); w.castShadow = true; placeholder.add(w);
-    const r = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,0.3,16), rimMat);
-    r.rotation.z = Math.PI/2; r.position.set(x,y,z); placeholder.add(r);
-  });
-
-  const lGeo = new THREE.BoxGeometry(0.1, 0.18, 0.4);
-  [-0.5,0.5].forEach(z => {
-    const hl = new THREE.Mesh(lGeo, lightMat); hl.position.set( 1.95, 0.6, z); placeholder.add(hl);
-    const tl = new THREE.Mesh(lGeo, tailMat);  tl.position.set(-1.95, 0.6, z); placeholder.add(tl);
-  });
-
-  const wfMesh = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.9, 1.8),
-    new THREE.MeshBasicMaterial({ color: 0x00c9a7, wireframe: true, transparent: true, opacity: 0.06 }));
-  wfMesh.position.y = 0.45; placeholder.add(wfMesh);
+  // ── Loading overlay (replaces old placeholder 3D car) ──
+  const loadingEl = document.createElement('div');
+  loadingEl.className = 'model-loading';
+  loadingEl.innerHTML = '<span>Model Loading</span>';
+  container.appendChild(loadingEl);
 
   // ── Car pivot ──
   const carPivot = new THREE.Object3D();
-  carPivot.add(placeholder);
   carPivot.rotation.y = restAngleY;
   scene.add(carPivot);
 
@@ -190,8 +160,10 @@ function buildScene(canvasId, options = {}) {
     m.scale.setScalar(scale);
     m.position.set(-centre.x * scale, -box.min.y * scale, -centre.z * scale);
     m.traverse(c => { if (c.isMesh) { c.castShadow = c.receiveShadow = true; if (c.material) c.material.envMapIntensity = 1.3; } });
-    carPivot.remove(placeholder);
     carPivot.add(m);
+    // fade out loading overlay
+    loadingEl.classList.add('model-loaded');
+    setTimeout(() => loadingEl.remove(), 700);
   });
 
   // ── Drag / spring-back ──
@@ -300,8 +272,9 @@ document.addEventListener('DOMContentLoaded', () => {
     { label: 'Rear',        angle: -Math.PI / 2    },
     { label: 'Rear-Left',   angle: -Math.PI * 0.25 },
   ];
-  // On mobile default to Front view; desktop keeps Left Side (0)
-  const isMobileView = window.innerWidth <= 768;
+  // Use matchMedia for reliable mobile detection (fixes Chrome inconsistency)
+  const mobileQuery = window.matchMedia('(max-width: 768px)');
+  const isMobileView = mobileQuery.matches;
   const frontIdx = heroAngles.findIndex(a => a.label === 'Front'); // index 2
   let heroAngleIdx = isMobileView ? frontIdx : 0;
   if (isMobileView && heroScene) {
@@ -338,8 +311,9 @@ document.addEventListener('DOMContentLoaded', () => {
     restAngleY: Math.PI / 2,
     camX: 0, camY: 1.1, camZ: 5.2,
     lights: 'cool', fogNear: 7, fogFar: 17,
+    particles: 800,
   });
-  if (aboutScene && window.innerWidth <= 768) {
+  if (aboutScene && mobileQuery.matches) {
     aboutScene.setAutoRock(true);
   }
 
@@ -376,8 +350,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Hamburger ──
   const hamburger   = document.getElementById('hamburger');
   const navLinksEl  = document.getElementById('nav-links');
-  hamburger.addEventListener('click', () => navLinksEl.classList.toggle('open'));
+  hamburger.addEventListener('click', (e) => { e.stopPropagation(); navLinksEl.classList.toggle('open'); });
   document.querySelectorAll('.nav-link').forEach(l => l.addEventListener('click', () => navLinksEl.classList.remove('open')));
+  // Close menu when tapping/clicking anywhere outside it
+  function closeMenuIfOutside(e) {
+    if (navLinksEl.classList.contains('open') && !navLinksEl.contains(e.target) && !hamburger.contains(e.target)) {
+      navLinksEl.classList.remove('open');
+    }
+  }
+  document.addEventListener('click', closeMenuIfOutside);
+  document.addEventListener('touchstart', closeMenuIfOutside, { passive: true });
 
   // ── Theme toggle (desktop + mobile in drawer) ──
   const html          = document.documentElement;
@@ -522,27 +504,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (btnMail) {
-    btnMail.addEventListener('click', () => {
-      const f = getFields();
-      const err = validate(f);
-      if (err) { errorMsg.textContent = err; return; }
-      errorMsg.textContent = '';
-      const subject = `AutoShine Booking — ${f.name} — ${f.date}`;
-      const body =
-        `New Booking Request\n\n` +
-        `Name: ${f.name}\n` +
-        `Phone: ${f.phone}\n` +
-        `Address: ${f.address}\n` +
-        `Car: ${f.car}${f.model ? ' (' + f.model + ')' : ''}\n` +
-        `Date: ${f.date}\n` +
-        `Time: ${f.time}\n\n` +
-        `Please confirm the booking.`;
-      const url = `mailto:${OWNER_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      window.location.href = url;
-      showSuccess();
-    });
-  }
 
   if (btnNewBooking) {
     btnNewBooking.addEventListener('click', () => {
